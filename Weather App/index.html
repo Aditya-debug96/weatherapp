@@ -1,0 +1,157 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">    
+    <title>Weather App - Minor Project</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+    <div class="card">
+        <div class="search">
+            <input type="text" placeholder="Enter City Name" spellcheck="false">
+            <button><img src="images/search.png" alt="Search"></button>
+        </div>
+        <div class="weather" style="display: none;"> <!-- Initially hidden -->
+            <img src="images/rain.png" class="weather-icon" alt="Weather Icon">
+            <h1 class="temp">31°C</h1>
+            <h2 class="city">Agartala</h2>
+            <div class="details">
+                <div class="col">
+                    <img src="images/humidity.png" alt="Humidity Icon">
+                    <div>
+                        <p class="humidity">50%</p>
+                        <p>Humidity</p>
+                    </div>
+                </div>
+                <div class="col">
+                    <img src="images/wind.png" alt="Wind Icon">
+                    <div>
+                        <p class="wind">15 km/h</p>
+                        <p>Wind</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="forecast" style="display: none;"> <!-- Forecast section -->
+            <h2>5-Day Forecast</h2>
+            <div class="forecast-details"></div>
+        </div>
+    </div>
+
+    <script>
+        const apikey = "2fcfcdd47073234240dbdbb18c46ca33"; // Replace with your actual API key
+        const apiurl = "https://api.openweathermap.org/data/2.5/weather?&units=metric"; 
+        const forecastUrl = "https://api.openweathermap.org/data/2.5/forecast?&units=metric"; 
+        const searchbox = document.querySelector(".search input");
+        const searchbutton = document.querySelector(".search button");
+        const weatherIcon = document.querySelector(".weather-icon");
+
+        // Function to fetch weather data by city name
+        async function fetchWeatherByCity(city) {
+            const response = await fetch(`${apiurl}&q=${city}&appid=${apikey}`);
+            if (!response.ok) {
+                const errorData = await response.json(); // Get the error response
+                console.error("Error fetching weather data:", errorData);
+                alert("Unable to retrieve weather data: " + errorData.message);
+                return;
+            }
+            const data = await response.json();
+            displayWeather(data);
+            fetchForecast(data.coord.lat, data.coord.lon); // Fetch the 5-day forecast using coordinates
+        }
+
+        // Function to fetch weather data based on coordinates
+        async function fetchWeatherByCoords(lat, lon) {
+            const response = await fetch(`${apiurl}&lat=${lat}&lon=${lon}&appid=${apikey}`);
+            if (!response.ok) {
+                console.error("Error fetching weather data");
+                alert("Unable to retrieve weather data. Please try again later.");
+                return;
+            }
+            const data = await response.json();
+            displayWeather(data);
+            fetchForecast(lat, lon); // Fetch the 5-day forecast
+        }
+
+        // Function to fetch the 5-day forecast
+        async function fetchForecast(lat, lon) {
+            const response = await fetch(`${forecastUrl}&lat=${lat}&lon=${lon}&appid=${apikey}`);
+            if (!response.ok) {
+                console.error("Error fetching forecast data");
+                return;
+            }
+            const forecastData = await response.json();
+            displayForecast(forecastData);
+        }
+
+        // Function to display weather data
+        function displayWeather(data) {
+            console.log(data); // Log the entire data object for debugging
+
+            if (data.main) {
+                document.querySelector(".city").innerHTML = data.name;
+                document.querySelector(".temp").innerHTML = Math.round(data.main.temp) + "°C";
+                document.querySelector(".humidity").innerHTML = data.main.humidity + "%";
+                document.querySelector(".wind").innerHTML = data.wind.speed + " km/h";
+
+                // Get the current time in hours
+                const currentTime = new Date().getHours();
+
+                // Update weather icon based on weather conditions and time of day
+                if (data.weather[0].main === "Clear") {
+                    weatherIcon.src = currentTime >= 6 && currentTime < 18 ? "images/sun.png" : "images/moon.png";
+                } else if (data.weather[0].main === "Clouds") {
+                    weatherIcon.src = currentTime >= 18 || currentTime < 6 ? "images/moon.png" : "images/clouds.png";
+                } else if (data.weather[0].main === "Rain") {
+                    weatherIcon.src = "images/rain.png"; 
+                } else if (data.weather[0].main === "Snow") {
+                    weatherIcon.src = "images/snow.png"; 
+                } else if (data.weather[0].main === "Drizzle") {
+                    weatherIcon.src = "images/drizzle.png";
+                } else if (data.weather[0].main === "Mist") {
+                    weatherIcon.src = "images/mist.png";
+                }
+
+                // Show the weather section
+                document.querySelector(".weather").style.display = "block";
+            } else {
+                console.error("Temperature data not found in the response.");
+                alert("Temperature data not found. Please try again.");
+            }
+        }
+
+       
+
+        // Function to get user's location
+        function getLocation() {
+            if (navigator.geolocation) {
+                navigator.geolocation.getCurrentPosition(position => {
+                    const lat = position.coords.latitude;
+                    const lon = position.coords.longitude;
+                    fetchWeatherByCoords(lat, lon);
+                }, () => {
+                    alert("Unable to retrieve your location. Please enter a city name.");
+                });
+            } else {
+                alert("Geolocation is not supported by this browser.");
+            }
+        }
+
+        // Event listener for search button
+        searchbutton.addEventListener("click", () => {
+            const city = encodeURIComponent(searchbox.value.trim());
+            if (city) {
+                fetchWeatherByCity(city); // Call the function to fetch by city name
+            } else {
+                alert("Please enter a city name.");
+            }
+        });
+
+        // Automatically get user's location on page load
+        window.onload = getLocation;
+    </script>
+
+</body>
+</html>
